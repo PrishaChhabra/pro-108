@@ -3,20 +3,11 @@ import mediapipe as mp
 
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands()
-mp_drawing = mp.solutions.drawing_utils
+mp_draw = mp.solutions.drawing_utils
 cap = cv2.VideoCapture(0)
 
 finger_tips =[8, 12, 16, 20]
 thumb_tip= 4
-
-def drawCircles(img, hand_landmark, handNo=0):
-    if hand_landmark:
-        hand_landmark=hand_landmark[handNo].landmark
-        tips=[]
-        for tips in finger_tips:
-            x,y=int(lm_list[tips].x*w), int(lm_list[tips].y*h)
-            cv2.circle(img,(x,y),15,(255,0,0),cv2.FILLED)
-            
 
 while True:
     ret,img = cap.read()
@@ -24,17 +15,44 @@ while True:
     h,w,c = img.shape
     results = hands.process(img)
 
-
     if results.multi_hand_landmarks:
         for hand_landmark in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(img, hand_landmark, mp_hands.HAND_CONNECTIONS, mp_drawing.DrawingSpec((0,0,255),2,2), mp_drawing.DrawingSpec((0,255,0),4,2))
             lm_list=[]
             for id ,lm in enumerate(hand_landmark.landmark):
                 lm_list.append(lm)
 
-             #Code goes here   
+             #Code goes here
+            finger_fold_status =[]
+            for tip in finger_tips:
+                #getting the landmark tip position and drawing blue circle
+                x,y = int(lm_list[tip].x*w), int(lm_list[tip].y*h)
+                cv2.circle(img, (x,y), 15, (255, 0, 0), cv2.FILLED)
 
+                #writing condition to check if finger is folded i.e checking if finger tip starting value is smaller than finger starting position which is inner landmark. for index finger    
+                #if finger folded changing color to green
+                if lm_list[tip].x < lm_list[tip - 3].x:
+                    cv2.circle(img, (x,y), 15, (0, 255, 0), cv2.FILLED)
+                    finger_fold_status.append(True)
+                else:
+                    finger_fold_status.append(False)
 
+            print(finger_fold_status)
+
+            #checking if all fingers are folded
+            if all(finger_fold_status):
+                #checking if the thumb is up
+                if lm_list[thumb_tip].y < lm_list[thumb_tip-1].y < lm_list[thumb_tip-2].y:
+                    print("LIKE")  
+                    cv2.putText(img ,"LIKE", (20,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3)
+
+                #check if thumb is down
+                if lm_list[thumb_tip].y > lm_list[thumb_tip-1].y > lm_list[thumb_tip-2].y:
+                    print("DISLIKE")   
+                    cv2.putText(img ,"DISLIKE", (20,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 3)
+
+            mp_draw.draw_landmarks(img, hand_landmark,
+            mp_hands.HAND_CONNECTIONS, mp_draw.DrawingSpec((0,0,255),2,2),
+            mp_draw.DrawingSpec((0,255,0),4,2))
 
             
             
